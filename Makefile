@@ -18,3 +18,9 @@ logs-watch:
 	docker compose logs --follow
 init:
 	docker compose up -d --build
+run-main:
+	docker compose exec go go run src/main.go
+run-lint:
+	docker compose exec go golangci-lint run -v
+run-fix:
+	docker compose exec go golangci-lint run --fix
