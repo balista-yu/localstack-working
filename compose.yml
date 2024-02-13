@@ -16,8 +16,6 @@ services:
       - DOCKER_HOST=unix:///var/run/docker.sock
       - PERSISTENCE=1
       - DYNAMODB_IN_MEMORY=1
-      - S3_SKIP_SIGNATURE_VALIDATION=0
-      - SKIP_SSL_CERT_DOWNLOAD=1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - AWS_DEFAULT_REGION=ap-northeast-1
