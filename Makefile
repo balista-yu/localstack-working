@@ -18,3 +18,17 @@ logs-watch:
 	docker compose logs --follow
 init:
 	docker compose up -d --build
+	docker compose exec go cp .env.example .env
+	@make download-go-module
+run-dynamodb:
+	docker compose exec go go run src/dynamodb.go
+run-lint:
+	docker compose exec go golangci-lint run -v
+run-fix:
+	docker compose exec go golangci-lint run --fix
+run-test:
+	docker compose exec go go test -cover -v ./...
+update-go-module:
+	docker compose exec go go mod tidy
+download-go-module:
+	docker compose exec go go mod download

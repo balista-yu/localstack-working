@@ -14,13 +14,70 @@ services:
     environment:
       - DEBUG=1
       - DOCKER_HOST=unix:///var/run/docker.sock
+      - PERSISTENCE=1
+      - DYNAMODB_IN_MEMORY=1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - AWS_DEFAULT_REGION=ap-northeast-1
       - DISABLE_CORS_CHECKS=1
       - EXTRA_CORS_ALLOWED_ORIGINS=*
       - EXTRA_CORS_ALLOWED_HEADERS=*
+      - SMTP_HOST=localhost:18024
+      - SMTP_EMAIL=dummy@example.com
     ports:
       - '127.0.0.1:14566:4566'
     volumes:
+      - ./infra/docker/localstack/init/init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./infra/docker/localstack/data/working-demo:/home/localstack/data/working-demo
+      - ./infra/docker/localstack/volumes:/var/lib/localstack
+    networks:
+      - container-link
+
+  mailhog:
+    container_name: demo-mail
+    hostname: demo-mail
+    image: demo-mail/mailhog:dev
+    build:
+      context: .
+      dockerfile: ./infra/docker/mailhog/Dockerfile
+      cache_from:
+        - demo-mail/mailhog:cache
+    environment:
+      - MH_STORAGE=maildir
+      - MH_MAILDIR_PATH=/tmp
+    ports:
+      - '18024:8025'
+    volumes:
+      - mail-data-volume:/tmp
+    networks:
+      - container-link
+
+  go:
+    container_name: go-working
+    hostname: go-working
+    image: go-working/go:dev
+    build:
+      context: .
+      dockerfile: ./infra/docker/golang/Dockerfile
+      cache_from:
+        - go-working/go:cache
+    ports:
+      - '18084:8080'
+    volumes:
+      - ./app:/app
+    tty: true
+    networks:
+      - container-link
+
+networks:
+  default:
+    name: localstack-working
+    external: true
+  container-link:
+    name: docker.internal
+
+volumes:
+  mail-data-volume:
+    name: demo-mail-data
+    driver: local

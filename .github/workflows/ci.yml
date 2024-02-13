@@ -1,0 +1,107 @@
+name: Code Checker
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+  LOCALSTACK_IMAGE_TAG: localstack-working/localstack:dev
+  LOCALSTACK_IMAGE_CACHE_TAG: localstack-working/localstack:cache
+  MAILHOG_IMAGE_TAG: demo-mail/mailhog:dev
+  MAILHOG_IMAGE_CACHE_TAG: demo-mail/mailhog:cache
+  GO_IMAGE_TAG: go-working/go:dev
+  GO_IMAGE_CACHE_TAG: go-working/go:cache
+  IMAGE_CACHE_DIR: /tmp/cache/docker-image
+  IMAGE_CACHE_KEY: cache-image
+
+jobs:
+  image-cache-or-build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v3
+
+      - name: Cache docker image
+        id: cache-docker-image
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.IMAGE_CACHE_DIR }}
+          key: ${{ runner.os }}-${{ env.IMAGE_CACHE_KEY }}-${{ hashFiles('Dockerfile') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.IMAGE_CACHE_KEY }}-
+
+      - name: Docker load
+        id: docker-load
+        if: steps.cache-docker-image.outputs.cache-hit == 'true'
+        run: docker image load -i ${IMAGE_CACHE_DIR}/image.tar
+
+      - name: Docker build
+        id: docker-build
+        run: docker compose build --build-arg BUILDKIT_INLINE_CACHE=1
+
+      - name: Docker tag and save
+        id: docker-tag-save
+        if: steps.cache-docker-image.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ${IMAGE_CACHE_DIR}
+          docker image tag ${LOCALSTACK_IMAGE_TAG} ${LOCALSTACK_IMAGE_CACHE_TAG}
+          docker image tag ${MAILHOG_IMAGE_TAG} ${MAILHOG_IMAGE_CACHE_TAG}
+          docker image tag ${GO_IMAGE_TAG} ${GO_IMAGE_CACHE_TAG}
+          docker image save -o ${IMAGE_CACHE_DIR}/image.tar ${LOCALSTACK_IMAGE_CACHE_TAG} ${MAILHOG_IMAGE_CACHE_TAG} ${GO_IMAGE_CACHE_TAG}
+
+  code-cheker:
+    needs: image-cache-or-build
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v3
+
+      - name: Setup reviewdog
+        uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: latest
+
+      - name: Cache docker image
+        id: cache-docker-image
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.IMAGE_CACHE_DIR }}
+          key: ${{ runner.os }}-${{ env.IMAGE_CACHE_KEY }}-${{ hashFiles('Dockerfile') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.IMAGE_CACHE_KEY }}-
+
+      - name: Docker load
+        id: docker-load
+        if: steps.cache-docker-image.outputs.cache-hit == 'true'
+        run: docker image load -i ${IMAGE_CACHE_DIR}/image.tar
+
+      - name: Docker compose build
+        id: docker-build
+        run: docker compose build --build-arg BUILDKIT_INLINE_CACHE=1
+
+      - name: Docker compose up
+        run: docker compose up -d --wait
+
+      - name: Run download go module
+        run: |
+          docker compose exec -T go go mod download
+
+      - name: Run lint
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          docker compose exec -T go golangci-lint run --out-format checkstyle | reviewdog -reporter=github-pr-review -f=checkstyle
+
+      - name: Run Tests
+        if: always()
+        run: |
+          docker compose exec -T go go test -cover -v ./...
