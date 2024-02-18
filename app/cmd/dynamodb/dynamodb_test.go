@@ -10,7 +10,7 @@ import (
 
 func TestMain(m *testing.M) {
 
-	err := godotenv.Load("../.env.test")
+	err := godotenv.Load("../../.env.test")
 
 	if err != nil {
 		os.Exit(1)

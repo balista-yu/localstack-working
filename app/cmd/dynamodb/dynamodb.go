@@ -7,7 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
-	client "app/src/client"
+	client "app/internal/client"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	_ "github.com/joho/godotenv/autoload"
