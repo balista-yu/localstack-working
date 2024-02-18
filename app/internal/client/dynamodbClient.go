@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"log"
 	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -11,8 +10,6 @@ import (
 )
 
 func DynamodbClient() (*dynamodb.Client, error) {
-
-	log.Printf("endpoint, %v", os.Getenv("AWS_LOCAL_ENDPOINT"))
 
 	awsEndpoint := os.Getenv("AWS_LOCAL_ENDPOINT")
 	awsRegion := os.Getenv("AWS_LOCAL_REGION")

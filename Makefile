@@ -21,7 +21,9 @@ init:
 	docker compose exec go cp .env.example .env
 	@make download-go-module
 run-dynamodb:
-	docker compose exec go go run src/dynamodb.go
+	docker compose exec go go run cmd/dynamodb/dynamodb.go
+run-s3:
+	docker compose exec go go run cmd/s3/s3.go
 run-lint:
 	docker compose exec go golangci-lint run -v
 run-fix:
