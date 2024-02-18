@@ -6,10 +6,10 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-func DynamodbClient() (*dynamodb.Client, error) {
+func S3Client() (*s3.Client, error) {
 
 	awsEndpoint := os.Getenv("AWS_LOCAL_ENDPOINT")
 	awsRegion := os.Getenv("AWS_LOCAL_REGION")
@@ -29,6 +29,8 @@ func DynamodbClient() (*dynamodb.Client, error) {
 		return nil, err
 	}
 
-	client := dynamodb.NewFromConfig(cfg)
+	client := s3.NewFromConfig(cfg, func(options *s3.Options) {
+		options.UsePathStyle = true
+	})
 	return client, nil
 }
